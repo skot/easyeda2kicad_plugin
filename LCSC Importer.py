@@ -223,6 +223,16 @@ class EasyEDAImporterPlugin(pcbnew.ActionPlugin):
             part_number = values["part_number"]
             logging.info(f"User entered part number: {part_number}")
 
+            if not part_number:
+                wx.MessageBox(
+                    "Enter an LCSC part number before importing.",
+                    "Missing Part Number",
+                    style=wx.ICON_WARNING,
+                )
+                dialog.Destroy()
+                logging.info("Dialog closed")
+                return
+
             if not any([values["symbol"], values["footprint"], values["3d"]]):
                 wx.MessageBox(
                     "Select at least one of Symbol, Footprint, or 3D Model.",
