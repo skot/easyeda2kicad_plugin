@@ -46,11 +46,38 @@ def sanitize_for_regex(field: str):
     return re.escape(field)
 
 
+def find_v6_symbol_bounds(lib_data: str, component_name: str):
+    token = f'(symbol "{component_name}"'
+    start = lib_data.find(token)
+    if start == -1:
+        return None
+
+    depth = 0
+    for index in range(start, len(lib_data)):
+        char = lib_data[index]
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return start, index + 1
+
+    return None
+
+
 def id_already_in_symbol_lib(
     lib_path: str, component_name: str, kicad_version: KicadVersion
 ) -> bool:
     with open(lib_path, encoding="utf-8") as lib_file:
         current_lib = lib_file.read()
+        if kicad_version == KicadVersion.v6:
+            if find_v6_symbol_bounds(
+                lib_data=current_lib,
+                component_name=component_name,
+            ):
+                logging.warning(f"This id is already in {lib_path}")
+                return True
+
         component = re.findall(
             sym_lib_regex_pattern[kicad_version.name].format(
                 component_name=sanitize_for_regex(component_name)
@@ -72,14 +99,24 @@ def update_component_in_symbol_lib_file(
 ) -> None:
     with open(file=lib_path, encoding="utf-8") as lib_file:
         current_lib = lib_file.read()
-        new_lib = re.sub(
-            sym_lib_regex_pattern[kicad_version.name].format(
-                component_name=sanitize_for_regex(component_name)
-            ),
-            component_content,
-            current_lib,
-            flags=re.DOTALL,
-        )
+        if kicad_version == KicadVersion.v6:
+            bounds = find_v6_symbol_bounds(
+                lib_data=current_lib,
+                component_name=component_name,
+            )
+            if not bounds:
+                raise ValueError(f"Could not find symbol {component_name} in {lib_path}")
+            start, end = bounds
+            new_lib = current_lib[:start] + component_content + current_lib[end:]
+        else:
+            new_lib = re.sub(
+                sym_lib_regex_pattern[kicad_version.name].format(
+                    component_name=sanitize_for_regex(component_name)
+                ),
+                component_content,
+                current_lib,
+                flags=re.DOTALL,
+            )
 
         new_lib = new_lib.replace(
             "(generator kicad_symbol_editor)",
