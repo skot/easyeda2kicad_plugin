@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Union
 
-from pydantic import BaseModel, validator
+from easyeda2kicad.pydantic_compat import BaseModel
 
 
 class SvgPathMoveTo(BaseModel):

@@ -164,17 +164,31 @@ def valid_arguments(arguments: dict) -> bool:
         lib_name = "easyeda2kicad"
         arguments["use_default_folder"] = True
 
-    arguments["output"] = f"{base_folder}/{lib_name}"
+    symbol_lib_path = f"{base_folder}/{lib_name}"
+    footprint_lib_path = f"{base_folder}/{lib_name}.pretty"
+    model_dir_path = (
+        f"{base_folder}/3dshapes"
+        if arguments["project_relative"] and not arguments.get("use_default_folder")
+        else f"{symbol_lib_path}.3dshapes"
+    )
+    model_dir_name = model_dir_path.replace("\\", "/").split("/")[-1]
+
+    arguments["symbol_lib_path"] = symbol_lib_path
+    arguments["footprint_lib_path"] = footprint_lib_path
+    arguments["model_dir_path"] = model_dir_path
+    arguments["footprint_lib_name"] = lib_name
+    arguments["model_dir_name"] = model_dir_name
+    arguments["output"] = symbol_lib_path
 
     # Create new footprint folder if it does not exist
-    if not os.path.isdir(f"{arguments['output']}.pretty"):
-        os.mkdir(f"{arguments['output']}.pretty")
+    if not os.path.isdir(arguments["footprint_lib_path"]):
+        os.mkdir(arguments["footprint_lib_path"])
         logging.info(f"Create {lib_name}.pretty footprint folder in {base_folder}")
 
     # Create new 3d model folder if don't exist
-    if not os.path.isdir(f"{arguments['output']}.3dshapes"):
-        os.mkdir(f"{arguments['output']}.3dshapes")
-        logging.info(f"Create {lib_name}.3dshapes 3D model folder in {base_folder}")
+    if not os.path.isdir(arguments["model_dir_path"]):
+        os.mkdir(arguments["model_dir_path"])
+        logging.info(f"Create {model_dir_name} 3D model folder in {base_folder}")
 
     lib_extension = "kicad_sym" if kicad_version == KicadVersion.v6 else "lib"
     if not os.path.isfile(f"{arguments['output']}.{lib_extension}"):
@@ -261,7 +275,7 @@ def main(argv: List[str] = sys.argv[1:]) -> int:
         # print(easyeda_symbol)
 
         is_id_already_in_symbol_lib = id_already_in_symbol_lib(
-            lib_path=f"{arguments['output']}.{sym_lib_ext}",
+            lib_path=f"{arguments['symbol_lib_path']}.{sym_lib_ext}",
             component_name=easyeda_symbol.info.name,
             kicad_version=kicad_version,
         )
@@ -275,19 +289,19 @@ def main(argv: List[str] = sys.argv[1:]) -> int:
         )
         # print(exporter.output)
         kicad_symbol_lib = exporter.export(
-            footprint_lib_name=arguments["output"].split("/")[-1].split(".")[0],
+            footprint_lib_name=arguments["footprint_lib_name"],
         )
 
         if is_id_already_in_symbol_lib:
             update_component_in_symbol_lib_file(
-                lib_path=f"{arguments['output']}.{sym_lib_ext}",
+                lib_path=f"{arguments['symbol_lib_path']}.{sym_lib_ext}",
                 component_name=easyeda_symbol.info.name,
                 component_content=kicad_symbol_lib,
                 kicad_version=kicad_version,
             )
         else:
             add_component_in_symbol_lib_file(
-                lib_path=f"{arguments['output']}.{sym_lib_ext}",
+                lib_path=f"{arguments['symbol_lib_path']}.{sym_lib_ext}",
                 component_content=kicad_symbol_lib,
                 kicad_version=kicad_version,
             )
@@ -295,7 +309,7 @@ def main(argv: List[str] = sys.argv[1:]) -> int:
         logging.info(
             f"Created Kicad symbol for ID : {component_id}\n"
             f"       Symbol name : {easyeda_symbol.info.name}\n"
-            f"       Library path : {arguments['output']}.{sym_lib_ext}"
+            f"       Library path : {arguments['symbol_lib_path']}.{sym_lib_ext}"
         )
 
     # ---------------- FOOTPRINT ----------------
@@ -304,7 +318,7 @@ def main(argv: List[str] = sys.argv[1:]) -> int:
         easyeda_footprint = importer.get_footprint()
 
         is_id_already_in_footprint_lib = fp_already_in_footprint_lib(
-            lib_path=f"{arguments['output']}.pretty",
+            lib_path=arguments["footprint_lib_path"],
             package_name=easyeda_footprint.info.name,
         )
         if not arguments["overwrite"] and is_id_already_in_footprint_lib:
@@ -313,15 +327,13 @@ def main(argv: List[str] = sys.argv[1:]) -> int:
 
         ki_footprint = ExporterFootprintKicad(footprint=easyeda_footprint)
         footprint_filename = f"{easyeda_footprint.info.name}.kicad_mod"
-        footprint_path = f"{arguments['output']}.pretty"
-        model_3d_path = f"{arguments['output']}.3dshapes".replace("\\", "/").replace(
-            "./", "/"
-        )
+        footprint_path = arguments["footprint_lib_path"]
+        model_3d_path = arguments["model_dir_path"].replace("\\", "/")
 
         if arguments.get("use_default_folder"):
             model_3d_path = "${EASYEDA2KICAD}/easyeda2kicad.3dshapes"
         if arguments["project_relative"]:
-            model_3d_path = "${KIPRJMOD}" + model_3d_path
+            model_3d_path = "${KIPRJMOD}/" + arguments["model_dir_name"]
 
         ki_footprint.export(
             footprint_full_path=f"{footprint_path}/{footprint_filename}",
@@ -341,21 +353,14 @@ def main(argv: List[str] = sys.argv[1:]) -> int:
                 easyeda_cp_cad_data=cad_data, download_raw_3d_model=True
             ).output
         )
-        exporter.export(lib_path=arguments["output"])
-        if exporter.output or exporter.output_step:
-            filename_wrl = f"{exporter.output.name}.wrl"
-            filename_step = f"{exporter.output.name}.step"
-            lib_path = f"{arguments['output']}.3dshapes"
+        exporter.export(output_dir=arguments["model_dir_path"])
+        if exporter.output_step:
+            filename_step = f"{exporter.input.name}.step"
+            lib_path = arguments["model_dir_path"]
 
             logging.info(
                 f"Created 3D model for ID: {component_id}\n"
-                f"       3D model name: {exporter.output.name}\n"
-                + (
-                    "       3D model path (wrl):"
-                    f" {os.path.join(lib_path, filename_wrl)}\n"
-                    if filename_wrl
-                    else ""
-                )
+                f"       3D model name: {exporter.input.name}\n"
                 + (
                     "       3D model path (step):"
                     f" {os.path.join(lib_path, filename_step)}\n"

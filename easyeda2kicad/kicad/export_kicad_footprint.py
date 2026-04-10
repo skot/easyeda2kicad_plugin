@@ -520,7 +520,7 @@ class ExporterFootprintKicad:
 
         if ki.model_3d is not None:
             ki_lib += KI_MODEL_3D.format(
-                file_3d=f"{model_3d_path}/{ki.model_3d.name}.wrl",
+                file_3d=f"{model_3d_path}/{ki.model_3d.name}.step",
                 pos_x=ki.model_3d.translation.x,
                 pos_y=ki.model_3d.translation.y,
                 pos_z=ki.model_3d.translation.z,

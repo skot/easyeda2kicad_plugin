@@ -4,8 +4,16 @@ import os
 import sys
 import logging
 
+plugin_dir = os.path.dirname(__file__)
+vendor_path = os.path.join(plugin_dir, "vendor")
+easyeda_path = os.path.join(plugin_dir, "easyeda2kicad")
+
+for path in [vendor_path, easyeda_path]:
+    if os.path.isdir(path) and path not in sys.path:
+        sys.path.insert(0, path)
+
 # Configure logging
-log_file = os.path.join(os.path.dirname(__file__), "lcsc_importer.log")
+log_file = os.path.join(plugin_dir, "lcsc_importer.log")
 logging.basicConfig(
     filename=log_file,
     level=logging.DEBUG,
@@ -14,7 +22,7 @@ logging.basicConfig(
 
 logging.info("LCSC Part Importer Plugin initialized")
 
-# Check for dependencies and alert user if missing
+# Check for bundled dependencies and alert user if anything is missing
 def check_dependencies():
     missing_dependencies = []
     try:
@@ -30,9 +38,8 @@ def check_dependencies():
     if missing_dependencies:
         missing_deps_str = ", ".join(missing_dependencies)
         message = (
-            f"The following dependencies are missing: {missing_deps_str}.\n"
-            "Please install them by running:\n"
-            f"pip install {' '.join(missing_dependencies)}"
+            f"The plugin bundle is missing required Python packages: {missing_deps_str}.\n"
+            "Reinstall the plugin and make sure the bundled `vendor` folder is present."
         )
         logging.warning(message)
         wx.MessageBox(message, "Missing Dependencies", style=wx.ICON_WARNING)
@@ -45,12 +52,9 @@ except ImportError as e:
     logging.error(f"Dependency check failed: {e}")
     raise e  # Stop execution if dependencies are missing
 
-# Add the `easyeda2kicad` folder to sys.path to make it importable
-easyeda_path = os.path.join(os.path.dirname(__file__), "easyeda2kicad")
-sys.path.insert(0, easyeda_path)
-
 try:
     from easyeda2kicad.__main__ import main  # import the main function from easyeda2kicad
+    from easyeda2kicad.easyeda.easyeda_api import EasyedaApi
     logging.info("Imported easyeda2kicad successfully")
 except Exception as e:
     logging.error(f"Failed to import easyeda2kicad: {e}")
@@ -76,7 +80,8 @@ class EasyEDAImporterPlugin(pcbnew.ActionPlugin):
             )
 
         project_dir = os.path.dirname(os.path.abspath(board_file))
-        return project_dir, os.path.join(project_dir, "easyeda2kicad.kicad_sym")
+        project_name = os.path.splitext(os.path.basename(board_file))[0]
+        return project_dir, os.path.join(project_dir, f"{project_name}.kicad_sym")
 
     def Run(self):
         logging.info("Run method started")
@@ -89,6 +94,17 @@ class EasyEDAImporterPlugin(pcbnew.ActionPlugin):
             
             # Run easyeda2kicad's main function with the part number
             try:
+                api = EasyedaApi()
+                cad_data = api.get_cad_data_of_component(part_number)
+                if not cad_data:
+                    detail = api.last_error_message or "No importable EasyEDA data was found."
+                    raise RuntimeError(
+                        f"LCSC part {part_number} could not be imported.\n"
+                        f"Reason: {detail}\n\n"
+                        "This usually means the part does not have EasyEDA symbol, "
+                        "footprint, or 3D model data available."
+                    )
+
                 project_dir, output_path = self._get_project_library_output()
                 result = main(
                     [

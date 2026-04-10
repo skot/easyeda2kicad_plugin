@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Union
 
-from pydantic import BaseModel, field_validator
+from easyeda2kicad.pydantic_compat import BaseModel, field_validator
 
 from easyeda2kicad.easyeda.svg_path_parser import parse_svg_path
 
