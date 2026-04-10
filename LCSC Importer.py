@@ -66,6 +66,18 @@ class EasyEDAImporterPlugin(pcbnew.ActionPlugin):
         self.icon_file_name = os.path.join(easyeda_path, "lcsc_logo.png")
         logging.info("Plugin defaults set")
 
+    def _get_project_library_output(self):
+        board = pcbnew.GetBoard()
+        board_file = board.GetFileName() if board else ""
+
+        if not board_file:
+            raise RuntimeError(
+                "Save the current board first so the importer can use the project directory."
+            )
+
+        project_dir = os.path.dirname(os.path.abspath(board_file))
+        return project_dir, os.path.join(project_dir, "easyeda2kicad.kicad_sym")
+
     def Run(self):
         logging.info("Run method started")
         # Open a dialog to get the LCSC part number
@@ -77,9 +89,24 @@ class EasyEDAImporterPlugin(pcbnew.ActionPlugin):
             
             # Run easyeda2kicad's main function with the part number
             try:
-                result = main(["--full", f"--lcsc_id={part_number}"])  # Pass arguments as needed
+                project_dir, output_path = self._get_project_library_output()
+                result = main(
+                    [
+                        "--full",
+                        f"--lcsc_id={part_number}",
+                        f"--output={output_path}",
+                        "--project-relative",
+                    ]
+                )
+                if result != 0:
+                    raise RuntimeError(
+                        "easyeda2kicad reported an error. Check the log for details."
+                    )
                 logging.info(f"Part imported successfully: {result}")
-                wx.MessageBox("Part imported successfully.", "Success")
+                wx.MessageBox(
+                    f"Part imported successfully.\nSaved to:\n{project_dir}",
+                    "Success",
+                )
             except Exception as e:
                 error_message = f"Error importing part:\n{e}"
                 logging.error(error_message)

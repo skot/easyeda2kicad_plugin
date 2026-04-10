@@ -13,7 +13,7 @@ A KiCad plugin that allows you to easily import parts (symbols, footprints, and 
 
 ![Import Menu Screenshot](https://github.com/user-attachments/assets/8438877e-8ba5-46f7-bc8d-0552915c4243)
 
-2. **Auto-Save**: Imported parts are stored in `/KiCad/easyeda2kicad`, ready for use.
+2. **Auto-Save**: Imported parts are stored in the current KiCad project directory as `easyeda2kicad.kicad_sym`, `easyeda2kicad.pretty`, and `easyeda2kicad.3dshapes`.
 
 ---
 
@@ -39,16 +39,13 @@ A KiCad plugin that allows you to easily import parts (symbols, footprints, and 
    On Windows you may have to install them through the _KiCad Command Promt_ found in programs/KiCadX/.
 
 7. **Run the plugin**  
-   Once all dependencies are installed, run the plugin by clicking the LCSC icon in the top menu bar in the PCB editor, and import your first component!
-   This will generate the required libraries, KiCad needs to import your parts.
+   Once all dependencies are installed, save your KiCad project and board, then run the plugin by clicking the LCSC icon in the top menu bar in the PCB editor.
+   The plugin will generate the required project-local libraries inside the current project folder.
 
 8. **Add libraries in KiCad**  
-   Lastly, we just need to tell KiCad where to find the parts you import!
-    - In KiCad, Go to Preferences > Configure Paths, and add the environment variables `EASYEDA2KICAD` :
-      - Windows : `C:/Users/your_username/Documents/Kicad/easyeda2kicad/`,
-      - Linux : `/home/your_username/Documents/Kicad/easyeda2kicad/`
-    - Go to Preferences > Manage Symbol Libraries, and Add the global library `easyeda2kicad` : `${EASYEDA2KICAD}/easyeda2kicad.kicad_sym`
-    - Go to Preferences > Manage Footprint Libraries, and Add the global library `easyeda2kicad` : `${EASYEDA2KICAD}/easyeda2kicad.pretty`
+   Lastly, tell KiCad where to find the parts you import for this project:
+    - Go to Preferences > Manage Symbol Libraries, and add the project library `easyeda2kicad` from `${KIPRJMOD}/easyeda2kicad.kicad_sym`
+    - Go to Preferences > Manage Footprint Libraries, and add the project library `easyeda2kicad` from `${KIPRJMOD}/easyeda2kicad.pretty`
 
 ---
 
