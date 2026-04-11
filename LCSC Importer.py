@@ -70,6 +70,7 @@ class ImportOptionsDialog(wx.Dialog):
         self.SetSize((420, 260))
         self.SetMinSize((420, 260))
         self.CentreOnParent()
+        self.part_number_ctrl.SetFocus()
 
     def get_values(self):
         return {
@@ -168,6 +169,30 @@ class EasyEDAImporterPlugin(pcbnew.ActionPlugin):
         lines.extend(["", "Saved to:", project_dir])
         return "\n".join(lines)
 
+    def _validate_requested_items(self, part_number, cad_data, selected):
+        if selected["symbol"]:
+            try:
+                EasyedaSymbolImporter(cad_data).get_symbol()
+            except Exception as exc:
+                raise RuntimeError(
+                    f"LCSC part {part_number} does not have a symbol available."
+                ) from exc
+
+        if selected["footprint"]:
+            try:
+                EasyedaFootprintImporter(cad_data).get_footprint()
+            except Exception as exc:
+                raise RuntimeError(
+                    f"LCSC part {part_number} does not have a footprint available."
+                ) from exc
+
+        if selected["3d"]:
+            model = Easyeda3dModelImporter(cad_data, False).output
+            if not model:
+                raise RuntimeError(
+                    f"LCSC part {part_number} does not have a 3D model available."
+                )
+
     def _get_conflicts(self, project_dir, output_path, cad_data, selected):
         conflicts = []
 
@@ -255,6 +280,8 @@ class EasyEDAImporterPlugin(pcbnew.ActionPlugin):
                         "This usually means the part does not have EasyEDA symbol, "
                         "footprint, or 3D model data available."
                     )
+
+                self._validate_requested_items(part_number, cad_data, values)
 
                 project_dir, output_path = self._get_project_library_output()
                 had_conflicts, should_continue = self._confirm_overwrite(
