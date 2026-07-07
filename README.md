@@ -15,7 +15,7 @@ The plugin now ships with its Python dependencies bundled, so users do not need 
 
 ![Import Menu Screenshot](https://github.com/user-attachments/assets/8438877e-8ba5-46f7-bc8d-0552915c4243)
 
-2. **Auto-Save**: Imported parts are stored in the current KiCad project directory as `<projectname>.kicad_sym`, `<projectname>.pretty`, and `3dshapes/`.
+2. **Choose install destinations**: Imported parts default to the current project directory, but the import dialog lets you choose the symbol library, footprint `.pretty` folder, and 3D model folder before importing.
    On KiCad 10, the plugin stores STEP 3D models only.
 
 ---
@@ -48,16 +48,16 @@ No separate `pip install` step is required.
 2. **Run the plugin from the PCB Editor toolbar**
    Enter an LCSC part number such as `C2040`.
 
-3. **The plugin writes files into your project**
-   - Symbol library: `<projectname>.kicad_sym`
-   - Footprint library: `<projectname>.pretty/`
-   - 3D models: `3dshapes/` with `.step` files
+3. **Choose where the plugin writes files**
+   - Symbol library: any `.kicad_sym` file
+   - Footprint library: any `.pretty/` folder
+   - 3D models: any folder for `.step` files
 
 4. **Add the symbol and footprint libraries to the project**
-   - Symbol library: `${KIPRJMOD}/<projectname>.kicad_sym`
-   - Footprint library: `${KIPRJMOD}/<projectname>.pretty`
+   - Symbol library: the `.kicad_sym` file chosen in the dialog
+   - Footprint library: the `.pretty` folder chosen in the dialog
 
-3D model paths are referenced automatically from `${KIPRJMOD}/3dshapes` using STEP models.
+3D model paths are referenced automatically. Folders inside the current project use `${KIPRJMOD}` paths; folders outside the project use absolute paths.
 
 ## Packaging
 
@@ -65,4 +65,4 @@ If you publish releases for other users, run `python3 package_release.py`. It cr
 
 ---
 
-This plugin is aimed at KiCad 10 style project-local libraries and STEP-based 3D models.
+This plugin is aimed at KiCad 10 style libraries and STEP-based 3D models.

@@ -73,6 +73,38 @@ def get_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--footprint-output",
+        required=False,
+        metavar="folder.pretty",
+        help="Output footprint library folder",
+        type=str,
+    )
+
+    parser.add_argument(
+        "--model-output",
+        required=False,
+        metavar="folder",
+        help="Output 3D model folder",
+        type=str,
+    )
+
+    parser.add_argument(
+        "--model-path",
+        required=False,
+        metavar="path",
+        help="3D model path prefix to store in generated footprints",
+        type=str,
+    )
+
+    parser.add_argument(
+        "--footprint-lib-name",
+        required=False,
+        metavar="name",
+        help="Footprint library name to store in generated symbols",
+        type=str,
+    )
+
+    parser.add_argument(
         "--overwrite",
         required=False,
         help=(
@@ -165,33 +197,57 @@ def valid_arguments(arguments: dict) -> bool:
         arguments["use_default_folder"] = True
 
     symbol_lib_path = f"{base_folder}/{lib_name}"
-    footprint_lib_path = f"{base_folder}/{lib_name}.pretty"
-    model_dir_path = (
+    footprint_lib_path = arguments.get("footprint_output") or f"{base_folder}/{lib_name}.pretty"
+    model_dir_path = arguments.get("model_output") or (
         f"{base_folder}/3dshapes"
         if arguments["project_relative"] and not arguments.get("use_default_folder")
         else f"{symbol_lib_path}.3dshapes"
     )
+
+    if not footprint_lib_path.endswith(".pretty"):
+        logging.error(f"Footprint library folder should end with .pretty: {footprint_lib_path}")
+        return False
+
+    footprint_parent = os.path.dirname(os.path.abspath(footprint_lib_path))
+    model_parent = os.path.dirname(os.path.abspath(model_dir_path))
+    if footprint_parent and not os.path.isdir(footprint_parent):
+        logging.error(f"Can't find the folder : {footprint_parent}")
+        return False
+    if model_parent and not os.path.isdir(model_parent):
+        logging.error(f"Can't find the folder : {model_parent}")
+        return False
+
     model_dir_name = model_dir_path.replace("\\", "/").split("/")[-1]
+    footprint_lib_name = arguments.get("footprint_lib_name")
+    if not footprint_lib_name:
+        footprint_lib_name = footprint_lib_path.replace("\\", "/").split("/")[-1]
+        if footprint_lib_name.endswith(".pretty"):
+            footprint_lib_name = footprint_lib_name[:-7]
 
     arguments["symbol_lib_path"] = symbol_lib_path
     arguments["footprint_lib_path"] = footprint_lib_path
     arguments["model_dir_path"] = model_dir_path
-    arguments["footprint_lib_name"] = lib_name
+    arguments["footprint_lib_name"] = footprint_lib_name
     arguments["model_dir_name"] = model_dir_name
+    arguments["model_path"] = arguments.get("model_path")
     arguments["output"] = symbol_lib_path
 
     # Create new footprint folder if it does not exist
-    if not os.path.isdir(arguments["footprint_lib_path"]):
-        os.mkdir(arguments["footprint_lib_path"])
-        logging.info(f"Create {lib_name}.pretty footprint folder in {base_folder}")
+    if (arguments["symbol"] or arguments["footprint"]) and not os.path.isdir(
+        arguments["footprint_lib_path"]
+    ):
+        os.makedirs(arguments["footprint_lib_path"], exist_ok=True)
+        logging.info(f"Create footprint folder: {arguments['footprint_lib_path']}")
 
     # Create new 3d model folder if don't exist
-    if not os.path.isdir(arguments["model_dir_path"]):
-        os.mkdir(arguments["model_dir_path"])
-        logging.info(f"Create {model_dir_name} 3D model folder in {base_folder}")
+    if (arguments["footprint"] or arguments["3d"]) and not os.path.isdir(
+        arguments["model_dir_path"]
+    ):
+        os.makedirs(arguments["model_dir_path"], exist_ok=True)
+        logging.info(f"Create 3D model folder: {arguments['model_dir_path']}")
 
     lib_extension = "kicad_sym" if kicad_version == KicadVersion.v6 else "lib"
-    if not os.path.isfile(f"{arguments['output']}.{lib_extension}"):
+    if arguments["symbol"] and not os.path.isfile(f"{arguments['output']}.{lib_extension}"):
         with open(
             file=f"{arguments['output']}.{lib_extension}", mode="w+", encoding="utf-8"
         ) as my_lib:
@@ -328,11 +384,13 @@ def main(argv: List[str] = sys.argv[1:]) -> int:
         ki_footprint = ExporterFootprintKicad(footprint=easyeda_footprint)
         footprint_filename = f"{easyeda_footprint.info.name}.kicad_mod"
         footprint_path = arguments["footprint_lib_path"]
-        model_3d_path = arguments["model_dir_path"].replace("\\", "/")
+        model_3d_path = (
+            arguments.get("model_path") or arguments["model_dir_path"]
+        ).replace("\\", "/")
 
         if arguments.get("use_default_folder"):
             model_3d_path = "${EASYEDA2KICAD}/easyeda2kicad.3dshapes"
-        if arguments["project_relative"]:
+        if arguments["project_relative"] and not arguments.get("model_path"):
             model_3d_path = "${KIPRJMOD}/" + arguments["model_dir_name"]
 
         ki_footprint.export(
