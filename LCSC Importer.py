@@ -220,7 +220,7 @@ class EasyEDAImporterPlugin(pcbnew.ActionPlugin):
             "project_dir": project_dir,
             "symbol_path": os.path.join(project_dir, f"{project_name}.kicad_sym"),
             "footprint_path": os.path.join(project_dir, f"{project_name}.pretty"),
-            "model_path": os.path.join(project_dir, "3dshapes"),
+            "model_path": os.path.join(project_dir, "3d"),
         }
 
     def _build_success_message(self, cad_data, selected):

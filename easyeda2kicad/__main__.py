@@ -198,11 +198,7 @@ def valid_arguments(arguments: dict) -> bool:
 
     symbol_lib_path = f"{base_folder}/{lib_name}"
     footprint_lib_path = arguments.get("footprint_output") or f"{base_folder}/{lib_name}.pretty"
-    model_dir_path = arguments.get("model_output") or (
-        f"{base_folder}/3dshapes"
-        if arguments["project_relative"] and not arguments.get("use_default_folder")
-        else f"{symbol_lib_path}.3dshapes"
-    )
+    model_dir_path = arguments.get("model_output") or f"{base_folder}/3d"
 
     if not footprint_lib_path.endswith(".pretty"):
         logging.error(f"Footprint library folder should end with .pretty: {footprint_lib_path}")
@@ -389,7 +385,7 @@ def main(argv: List[str] = sys.argv[1:]) -> int:
         ).replace("\\", "/")
 
         if arguments.get("use_default_folder"):
-            model_3d_path = "${EASYEDA2KICAD}/easyeda2kicad.3dshapes"
+            model_3d_path = "${EASYEDA2KICAD}/3d"
         if arguments["project_relative"] and not arguments.get("model_path"):
             model_3d_path = "${KIPRJMOD}/" + arguments["model_dir_name"]
 

@@ -365,8 +365,7 @@ class KiSymbolPin:
             x=self.pos_x,
             y=self.pos_y,
             orientation=(180 + self.orientation) % 360,  # TODO: 360 - ?
-            pin_length=self.length,
-            # pin_length=KiExportConfigV6.PIN_LENGTH.value,
+            pin_length=KiExportConfigV6.PIN_LENGTH.value,
             pin_name=apply_pin_name_style(
                 pin_name=self.name, kicad_version=KicadVersion.v6
             ),
